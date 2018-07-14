@@ -2,6 +2,9 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
   commands gsettings: '/usr/bin/gsettings'
   commands dbus_launch: '/usr/bin/dbus-launch'
   commands getent: '/usr/bin/getent'
+  commands pgrep: '/usr/bin/pgrep'
+  commands sudo: '/usr/bin/sudo'
+  commands grep: '/bin/grep'
 
   def self.instances
     users = getent(['passwd']).encode('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
@@ -10,19 +13,46 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
 
     users.split("\n").map do |user|
       user_properties = user.to_s.split(':')
-      if user_properties[2].to_i >= 1000 then
-        settings << new(
-          name: "#{user_properties[0]} - blahs blak",
-          ensure: :present,
-          schema: :blahs,
-          key: :blahk,
-          value: :blahv,
-          user: user_properties[0])
+      user_name = user_properties[0]
+      user_id = user_properties[2].to_i
+      if user_id >= 1000 and user_id != 65534 then
+        begin
+          # Try and get the running gnome-session process
+          pid = pgrep("-u#{user_name}", 'gnome-session').split("\n").compact[0]
+        rescue
+          # Oops! No gnome-session currently running for this user!
+          ENV['DBUS_SESSION_BUS_ADDRESS'] = nil
+          cmd = method(:sudo)
+          args = ['-u', user_name, 'dbus-launch', 'gsettings']
+        else
+          # We have a valid gnome-session! Lets hijack the dbus session!
+          dbus_session = grep('-zE', '^DBUS_SESSION_BUS_ADDRESS=', "/proc/#{pid}/environ").split("\u{0}").compact[0].split('=')[1..-1].join('=')
+          ENV['DBUS_SESSION_BUS_ADDRESS'] = dbus_session
+          cmd = method(:gsettings)
+          args = []
+        end
+
+        recursive_args = args.clone
+        recursive_args << 'list-recursively'
+        cmd.call(recursive_args).split("\n").each do |line|
+          next if line == 'No protocol specified'
+          parts = line.split(' ')
+          schema = parts[0]
+          key = parts[1]
+          value = (parts[2..-1] || []).join(' ')
+          settings << new(
+            name: "#{user_name} - #{schema} #{key}",
+            ensure: :present,
+            schema: schema,
+            key: key,
+            value: value,
+            user: user_name,
+          )
+        end
       end
     end
 
-    settings.compact!
-    settings
+    settings.compact
   end
 
   def self.prefetch(resources)
