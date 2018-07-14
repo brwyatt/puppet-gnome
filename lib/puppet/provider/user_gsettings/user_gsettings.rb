@@ -26,6 +26,15 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
   end
 
   def self.prefetch(resources)
+    settings = instances
+    resources.each_key do |name|
+      provider = settings.find { |setting|
+        setting.schema == resources[name].schema and
+          setting.key == resources[name].key and
+          setting.user == resources[name].user
+      }
+      resources[name].provider = provider if provider
+    end
   end
 
   def create
@@ -35,6 +44,7 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
   end
 
   def exists?
+    @property_hash[:ensure] == :present
   end
 
   mk_resource_methods
