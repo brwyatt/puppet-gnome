@@ -9,19 +9,19 @@ Puppet::Type.newtype(:user_gsettings) do
   end
 
   newproperty(:schema) do
-    defaultto 'wut?'
+    isrequired
   end
 
   newproperty(:key) do
-    defaultto 'wut?'
+    isrequired
   end
 
   newproperty(:value) do
-    defaultto 'wut?'
+    isrequired
   end
 
   newproperty(:user) do
-    defaultto 'wut?'
+    isrequired
   end
 end
 
