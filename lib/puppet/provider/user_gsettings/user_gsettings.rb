@@ -83,7 +83,21 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
           setting.key == resources[name].parameters[:key].value and
           setting.user == resources[name].parameters[:user].value
       }
-      resources[name].provider = provider if provider
+      if provider
+        resources[name].provider = provider
+      else
+        begin
+          provider_hash = get_properties(resources[name].parameters[:user].value,
+                                         resources[name].parameters[:schema].value,
+                                         resources[name].parameters[:key].value)
+        rescue
+        else
+          provider_hash[:name] = "#{provider_hash[:user]} - #{provider_hash[:schema]} #{provider_hash[:key]}"
+          provider_hash[:ensure] = :present
+          provider = new(provider_hash)
+          resources[name].provider = provider
+        end
+      end
     end
   end
 
