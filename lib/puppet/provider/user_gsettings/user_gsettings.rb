@@ -61,12 +61,13 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
   end
 
   def self.prefetch(resources)
+    # We can't really rely on the resource names, we have to match on user, schema, and key
     settings = instances
     resources.each_key do |name|
       provider = settings.find { |setting|
-        setting.schema == resources[name].schema and
-          setting.key == resources[name].key and
-          setting.user == resources[name].user
+        setting.schema == resources[name].parameters[:schema].value and
+          setting.key == resources[name].parameters[:key].value and
+          setting.user == resources[name].parameters[:user].value
       }
       resources[name].provider = provider if provider
     end
