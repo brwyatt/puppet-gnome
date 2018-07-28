@@ -6,6 +6,11 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
   commands sudo: '/usr/bin/sudo'
   commands grep: '/bin/grep'
 
+  def initialize(value={})
+    super(value)
+    @property_flush = {}
+  end
+
   def self.gsettings_exec(user_name, gsettings_args)
     begin
       # Try and get the running gnome-session process
@@ -26,6 +31,15 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
     args[-1].concat(gsettings_args.join(' '))
 
     cmd.call(args)
+  end
+
+  def self.get_properties(user_name, schema, key)
+    {
+      :user => user_name,
+      :schema => schema,
+      :key => key,
+      :value => gsettings_exec(user_name, ['get', schema, key])
+    }
   end
 
   def self.instances
@@ -74,13 +88,29 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
   end
 
   def create
+    @property_flush[:ensure] = :present
   end
 
   def destroy
+    @property_flush[:ensure] = :absent
   end
 
   def exists?
     @property_hash[:ensure] == :present
+  end
+
+  def flush
+    if @property_flush[:ensure] == :absent
+      self.class.gsettings_exec(resource[:user], ['reset', resource[:schema],
+                                                  resource[:key]])
+      return
+    end
+
+    self.class.gsettings_exec(resource[:user], ['set', resource[:schema],
+                                                resource[:key], resource[:value]])
+
+    @property_hash = self.class.get_properties(resource[:user], resource[:schema],
+                                               resource[:key])
   end
 
   mk_resource_methods
