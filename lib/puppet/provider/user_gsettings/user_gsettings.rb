@@ -107,7 +107,7 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
     end
 
     self.class.gsettings_exec(resource[:user], ['set', resource[:schema],
-                                                resource[:key], resource[:value]])
+                                                resource[:key], "\"#{resource[:value]}\""])
 
     @property_hash = self.class.get_properties(resource[:user], resource[:schema],
                                                resource[:key])
