@@ -30,7 +30,7 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
 
     args[-1].concat(gsettings_args.join(' '))
 
-    cmd.call(args)
+    cmd.call(args).strip
   end
 
   def self.get_properties(user_name, schema, key)
