@@ -4,6 +4,7 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
   commands getent: '/usr/bin/getent'
   commands pgrep: '/usr/bin/pgrep'
   commands sudo: '/usr/bin/sudo'
+  commands runuser: '/sbin/runuser'
   commands grep: '/bin/grep'
 
   def initialize(value={})
@@ -18,14 +19,14 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
     rescue
       # Oops! No gnome-session currently running for this user!
       ENV['DBUS_SESSION_BUS_ADDRESS'] = nil
-      cmd = method(:sudo)
-      args = ['su', user_name, '-c', 'dbus-launch gsettings ']
+      cmd = method(:runuser)
+      args = ['-l', user_name, '-c', 'dbus-launch gsettings ']
     else
       # We have a valid gnome-session! Lets hijack the dbus session!
       dbus_session = grep('-zE', '^DBUS_SESSION_BUS_ADDRESS=', "/proc/#{pid}/environ").split("\u{0}").compact[0].split('=')[1..-1].join('=')
       ENV['DBUS_SESSION_BUS_ADDRESS'] = dbus_session
-      cmd = method(:sudo)
-      args = ["DBUS_SESSION_BUS_ADDRESS=#{dbus_session}", 'su', user_name, '-c', 'gsettings ']
+      cmd = method(:runuser)
+      args = ['-l', user_name, '-c', "DBUS_SESSION_BUS_ADDRESS=\"#{dbus_session}\" gsettings "]
     end
 
     args[-1].concat(gsettings_args.join(' '))
