@@ -34,12 +34,18 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
     cmd.call(args).strip
   end
 
-  def self.get_properties(user_name, schema, key)
+  def self.get_properties(user_name, schema, key, schemadir=nil)
+    args = ['get', schema, key]
+    unless schemadir.nil?
+      args = ['--schemadir', schemadir] + args
+    end
+
     {
       :user => user_name,
       :schema => schema,
       :key => key,
-      :value => gsettings_exec(user_name, ['get', schema, key])
+      :schemadir => schemadir,
+      :value => gsettings_exec(user_name, args)
     }
   end
 
@@ -90,7 +96,8 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
         begin
           provider_hash = get_properties(resources[name].parameters[:user].value,
                                          resources[name].parameters[:schema].value,
-                                         resources[name].parameters[:key].value)
+                                         resources[name].parameters[:key].value,
+                                         resources[name].parameters[:schemadir].value)
         rescue
         else
           provider_hash[:name] = "#{provider_hash[:user]} - #{provider_hash[:schema]} #{provider_hash[:key]}"
@@ -116,16 +123,24 @@ Puppet::Type.type(:user_gsettings).provide(:user_gsettings) do
 
   def flush
     if @property_flush[:ensure] == :absent
-      self.class.gsettings_exec(resource[:user], ['reset', resource[:schema],
-                                                  resource[:key]])
+      args = ['reset', resource[:schema], resource[:key]]
+      unless resource[:schemadir].nil?
+        args = ['--schemadir', resource[:schemadir]] + args
+      end
+
+      self.class.gsettings_exec(resource[:user], args)
       return
     end
 
-    self.class.gsettings_exec(resource[:user], ['set', resource[:schema],
-                                                resource[:key], "\"#{resource[:value]}\""])
+    args = ['set', resource[:schema], resource[:key], "\"#{resource[:value]}\""]
+    unless resource[:schemadir].nil?
+      args = ['--schemadir', resource[:schemadir]] + args
+    end
+
+    self.class.gsettings_exec(resource[:user], args)
 
     @property_hash = self.class.get_properties(resource[:user], resource[:schema],
-                                               resource[:key])
+                                               resource[:key], resource[:schemadir])
   end
 
   mk_resource_methods

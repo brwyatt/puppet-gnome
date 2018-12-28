@@ -23,6 +23,9 @@ Puppet::Type.newtype(:user_gsettings) do
   newproperty(:user) do
     isrequired
   end
+
+  newproperty(:schemadir) do
+  end
 end
 
 # vim: ts=2 sts=2 sw=2 expandtab
